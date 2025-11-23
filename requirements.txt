@@ -1,0 +1,10 @@
+#pip install -r requirements.txt
+# najwazniejsze opencv oraz scikit-image do obrobki obrazow moze pillow
+numpy
+opencv-python
+scikit-image
+pandas
+matplotlib
+seaborn
+scikit-learn
+pillow
