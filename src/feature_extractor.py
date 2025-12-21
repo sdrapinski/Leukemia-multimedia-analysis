@@ -73,4 +73,22 @@ class FeatureExtractor:
         
         features['skewness'] = skew(gray_pixels)
 
+        moments = cv2.moments(cnt)
+        huMoments = cv2.HuMoments(moments)
+        
+        for i in range(0, 7):
+            val = -1 * np.sign(huMoments[i][0]) * np.log10(np.abs(huMoments[i][0])) if huMoments[i][0] != 0 else 0
+            features[f'hu_moment_{i}'] = val
+        
+        gray_masked = gray[mask_bool]
+        if len(gray_masked) > 0:
+            thresh_val, _ = cv2.threshold(gray_masked, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            
+            nucleus_pixels = np.sum(gray_masked < thresh_val)
+            total_pixels = len(gray_masked)
+            
+            features['nc_ratio'] = nucleus_pixels / total_pixels if total_pixels > 0 else 0
+        else:
+            features['nc_ratio'] = 0
+
         return features, cnt
