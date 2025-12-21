@@ -19,19 +19,14 @@ class LeukemiaClassifier:
         ]
 
     def fit(self, df):
-        """
-        'Uczenie' klasyfikatora: obliczenie średnich wartości cech dla zdrowych i chorych.
-        """
-        # 1. Normalizacja danych (standaryzacja), aby np. 'area' (duże liczby)
-        # nie zagłuszyła 'solidity' (małe liczby 0-1).
         for col in self.features_to_use:
             self.means[col] = df[col].mean()
             self.stds[col] = df[col].std()
-            if self.stds[col] == 0: self.stds[col] = 1 # Zabezpieczenie przed dzieleniem przez 0
+            if self.stds[col] == 0: self.stds[col] = 1
 
         df_norm = self._normalize(df)
 
-        # 2. Obliczenie centroidów (środków ciężkości) dla każdej klasy
+    
         self.centroids = df_norm.groupby('label')[self.features_to_use].mean().to_dict('index')
         print(f"Klasyfikator wytrenowany. Wzorce klas: {list(self.centroids.keys())}")
 
@@ -62,8 +57,6 @@ class LeukemiaClassifier:
         min_dist = float('inf')
 
         for label, centroid in self.centroids.items():
-            # Obliczanie dystansu euklidesowego w przestrzeni cech
-            # d = sqrt((x1-w1)^2 + (x2-w2)^2 + ...)
             dist = 0
             for feature in self.features_to_use:
                 dist += (row[feature] - centroid[feature]) ** 2
