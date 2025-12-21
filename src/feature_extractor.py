@@ -20,18 +20,33 @@ class FeatureExtractor:
         perimeter = cv2.arcLength(cnt, True)
         if perimeter == 0: return None
         circularity = (4 * np.pi * area) / (perimeter**2)
+
+        hull = cv2.convexHull(cnt)
+        hull_area = cv2.contourArea(hull)
+        solidity = area / hull_area if hull_area > 0 else 0
+
+        x, y, w, h = cv2.boundingRect(cnt)
+        aspect_ratio = float(w) / h
         
         features['area'] = area
         features['perimeter'] = perimeter
         features['circularity'] = circularity
+        features['solidity'] = solidity
+        features['aspect_ratio'] = aspect_ratio
 
         mask_bool = mask == 255
         
         hsv = cv2.cvtColor(original_image, cv2.COLOR_BGR2HSV)
 
+        lab_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2Lab)
+        l_channel, a_channel, b_channel = cv2.split(lab_image)
+
         hue_pixels = hsv[:, :, 0][mask_bool]        
         sat_pixels = hsv[:, :, 1][mask_bool]        
         val_pixels = hsv[:, :, 2][mask_bool]
+
+        a_pixels = a_channel[mask_bool]
+        b_pixels = b_channel[mask_bool]
 
         if len(val_pixels) == 0: return None
 
@@ -43,6 +58,9 @@ class FeatureExtractor:
 
         features['std_saturation'] = np.std(sat_pixels)
         features['std_value'] = np.std(val_pixels)
+        features['std_a'] = np.std(a_pixels)
+        features['std_b'] = np.std(b_pixels)
+        features['color_heterogeneity'] = np.sqrt(features['std_a']**2 + features['std_b']**2)
         
         gray = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
         gray_pixels = gray[mask_bool]
