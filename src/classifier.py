@@ -12,23 +12,32 @@ class LeukemiaClassifier:
         self.centroids = {}
         # Cechy, które bierzemy pod uwagę przy decyzji (kluczowe dla diagnozy)
         self.features_to_use = [
-            'solidity',             # Nieregularność brzegu
-            'circularity',          # Okrągłość
-            'color_heterogeneity',  # Przebarwienia (Std Lab)
-            'aspect_ratio'          # Wydłużenie
+        'solidity', 'circularity', 
+        'aspect_ratio',
+        'color_heterogeneity', 
+        'skewness',             
+        'texture_std',         
+        'std_saturation',       
+        'mean_value'
         ]
 
     def fit(self, df):
+        # 1. Oblicz statystyki używając MEDIANY i IQR (rozstęp międzykwartylowy) zamiast średniej/std
         for col in self.features_to_use:
-            self.means[col] = df[col].mean()
-            self.stds[col] = df[col].std()
+            self.means[col] = df[col].median()  # Mediana zamiast średniej!
+            
+            # IQR zamiast odchylenia standardowego
+            q75 = df[col].quantile(0.75)
+            q25 = df[col].quantile(0.25)
+            self.stds[col] = q75 - q25
+            
             if self.stds[col] == 0: self.stds[col] = 1
 
         df_norm = self._normalize(df)
 
-    
-        self.centroids = df_norm.groupby('label')[self.features_to_use].mean().to_dict('index')
-        print(f"Klasyfikator wytrenowany. Wzorce klas: {list(self.centroids.keys())}")
+        # 2. Centroidy też wyznaczaj medianą (Centroid staje się "Medoidem")
+        self.centroids = df_norm.groupby('label')[self.features_to_use].median().to_dict('index')
+        print(f"Klasyfikator (oparty na medianie) wytrenowany.")
 
     def predict(self, df):
         """
@@ -52,16 +61,28 @@ class LeukemiaClassifier:
         return df_copy
 
     def _predict_single_normalized(self, row):
-        """Mierzy odległość punktu od wzorców i zwraca najbliższy."""
+        weights = {
+            'solidity': 1.5,
+            'circularity': 1.0,
+            'color_heterogeneity': 2.0, 
+            'skewness': 2.0,            
+            'texture_std': 1.5,
+            'aspect_ratio': 0.5,        
+            'std_saturation': 1.5,
+            'mean_value': 1.0
+        }
+        
         best_label = None
         min_dist = float('inf')
 
         for label, centroid in self.centroids.items():
             dist = 0
             for feature in self.features_to_use:
-                dist += (row[feature] - centroid[feature]) ** 2
-            dist = np.sqrt(dist)
-
+                w = weights.get(feature, 1.0)
+                # Dystans ważony
+                dist += w * ((row[feature] - centroid[feature]) ** 2)
+            
+            # Pierwiastek nie jest konieczny do porównywania (monotoniczność), ale można zostawić
             if dist < min_dist:
                 min_dist = dist
                 best_label = label

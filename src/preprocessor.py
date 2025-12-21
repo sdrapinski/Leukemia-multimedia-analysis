@@ -32,7 +32,9 @@ class ImagePreprocessor:
         return mask
 
     def _clean_mask(self, mask):
-        kernel = np.ones((5, 5), np.uint8)
-        cleaned = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, kernel)
+        kernel_close = np.ones((7, 7), np.uint8) 
+        kernel_open = np.ones((5, 5), np.uint8) 
+        
+        cleaned = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close)
+        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, kernel_open)
         return cleaned
