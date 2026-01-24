@@ -6,18 +6,15 @@ from skimage import img_as_ubyte
 
 def preprocess_image(image):
     """
-    KROK 1: Wstępne przetwarzanie i poprawa kontrastu (CLAHE).
-    Zamienia obraz na odcienie szarości i wyrównuje histogram, 
-    aby uwydatnić detale wewnątrz komórki przed analizą tekstury.
+    Konwersja obrazu do skali szarości oraz poprawa kontrastu metodą CLAHE.
     """
-    # Konwersja na szarość
+    # Jeśli obraz jest kolorowy, konwertuj do skali szarości
     if len(image.shape) == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
         gray = image
 
-    # CLAHE (Contrast Limited Adaptive Histogram Equalization)
-    # ClipLimit zapobiega nadmiernemu wzmocnieniu szumu na czarnym tle
+    # Zastosowanie CLAHE (Contrast Limited Adaptive Histogram Equalization)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     enhanced_gray = clahe.apply(gray)
     
@@ -25,87 +22,59 @@ def preprocess_image(image):
 
 def calculate_texture_map(gray_image, disk_size=3):
     """
-    KROK 2: Obliczenie mapy tekstury (Entropia).
-    Miejsca gładkie (czarne tło) będą miały niską wartość.
-    Miejsca złożone (wnętrze komórki) będą miały wysoką wartość.
+    Wyznaczenie mapy entropii lokalnej dla obrazu w skali szarości.
+    Używany jest promień dysku określający sąsiedztwo.
     """
-    # Entropia wymaga formatu uint8
     img_uint8 = img_as_ubyte(gray_image)
-    
-    # Obliczenie entropii lokalnej
-    # Disk(3) oznacza, że patrzymy na otoczenie o promieniu 3 pikseli
     texture_map = entropy(img_uint8, disk(disk_size))
-    
-    # Normalizacja wyniku do zakresu 0-255 (żeby można było go progować jak obraz)
+    # Normalizacja do zakresu 0-255
     texture_map_norm = cv2.normalize(texture_map, None, 0, 255, cv2.NORM_MINMAX)
     return texture_map_norm.astype(np.uint8)
 
 def generate_binary_mask(texture_map):
     """
-    KROK 3: Binaryzacja na podstawie tekstury.
-    Oddzielamy "coś co ma strukturę" od "pustego tła".
+    Binaryzacja mapy tekstury metodą Otsu.
     """
-    # Używamy Otsu do automatycznego znalezienia progu
     _, binary_mask = cv2.threshold(texture_map, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return binary_mask
 
 def clean_mask(binary_mask):
     """
-    KROK 4: Operacje morfologiczne.
-    Wygładzamy krawędzie maski i wypełniamy ewentualne dziury w środku komórki.
+    Morfologiczne czyszczenie maski: zamknięcie i otwarcie (kernel 5x5).
     """
     kernel = np.ones((5,5), np.uint8)
-    
-    # Zamknięcie (Closing) - wypełnia małe czarne dziury wewnątrz białego obszaru
     cleaned = cv2.morphologyEx(binary_mask, cv2.MORPH_CLOSE, kernel)
-    
-    # Otwarcie (Opening) - usuwa małe białe kropki z tła (szum)
     cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, kernel)
-    
     return cleaned
 
 def extract_features(original_image, mask):
     """
-    KROK 5: Ekstrakcja cech numerycznych.
-    Mierzymy kształt z maski oraz kolor z oryginalnego obrazu (tam gdzie maska > 0).
+    Ekstrakcja cech morfologicznych, kolorystycznych i teksturalnych z obrazu na podstawie maski.
     """
     features = {}
-    
-    # --- Analiza Kształtu ---
+    # Znajdź kontury w masce
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
     if not contours:
-        return None # Nie znaleziono komórki
+        return None
         
-    # Zakładamy, że największy kontur to komórka
+    # Największy kontur traktowany jako obiekt docelowy
     cnt = max(contours, key=cv2.contourArea)
-    
     area = cv2.contourArea(cnt)
     perimeter = cv2.arcLength(cnt, True)
-    
-    if perimeter == 0:
-        circularity = 0
-    else:
-        circularity = (4 * np.pi * area) / (perimeter**2)
-        
+    circularity = (4 * np.pi * area) / (perimeter**2) if perimeter != 0 else 0
     features['area'] = area
     features['perimeter'] = perimeter
     features['circularity'] = circularity
-    
-    # --- Analiza Koloru (tylko wewnątrz maski) ---
-    # Konwersja na HSV dla lepszej analizy medycznej
+
+    # Średnie wartości HSV wewnątrz maski
     hsv = cv2.cvtColor(original_image, cv2.COLOR_BGR2HSV)
-    
-    # cv2.mean oblicza średnią tylko tam, gdzie maska jest różna od zera
     mean_color = cv2.mean(hsv, mask=mask)
-    
     features['mean_hue'] = mean_color[0]
     features['mean_saturation'] = mean_color[1]
     features['mean_value'] = mean_color[2]
-    
-    # --- Analiza Tekstury (Wariancja jasności wewnątrz komórki) ---
+
+    # Odchylenie standardowe jasności (tekstura) wewnątrz maski
     gray = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
-    # Wybieramy piksele należące do komórki
     cell_pixels = gray[mask == 255]
     if len(cell_pixels) > 0:
         features['texture_std'] = np.std(cell_pixels) # Odchylenie standardowe jasności
