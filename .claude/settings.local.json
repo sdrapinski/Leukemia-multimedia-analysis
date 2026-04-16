@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import json; nb=json.load\\(open\\('mainCnn.ipynb',encoding='utf-8'\\)\\); [print\\(i, c['cell_type'], c.get\\('id',''\\)\\) for i,c in enumerate\\(nb['cells']\\)]\")",
+      "Bash(python -c \"import json; nb=json.load\\(open\\('mainCnn.ipynb',encoding='utf-8'\\)\\); print\\(nb['metadata']\\)\")",
+      "Bash(python _rebuild_notebook.py)",
+      "Bash(rm _rebuild_notebook.py)",
+      "Bash(python -c \"import json; nb=json.load\\(open\\('mainCnn.ipynb',encoding='utf-8'\\)\\); print\\('cells:', len\\(nb['cells']\\)\\); [print\\(i, c['cell_type']\\) for i,c in enumerate\\(nb['cells']\\)]\")",
+      "Bash(python -c \"import json; json.load\\(open\\('main.ipynb',encoding='utf-8'\\)\\); json.load\\(open\\('mainCnn.ipynb',encoding='utf-8'\\)\\); print\\('Both notebooks are valid JSON'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"import tensorflow as tf; print\\('tf:', tf.__version__\\)\")",
+      "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(python -c \"import jupyter; print\\('jupyter OK'\\)\")",
+      "Bash(where jupyter *)"
+    ]
+  }
+}
