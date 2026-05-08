@@ -16,7 +16,11 @@ Python 3.13.5
 /data/fold_x/foldx folder /all zawiera komorki nowotworowe a /hem zawiera komorki zdrowe  
 
 ### Plan:
-0: Przeanalizuj projekt oraz foldery.
-1. stare dane wejsciowe zostały przeniesione do /data/v1 zaktualizuj scieżki do folderów w plikach które z nich korzystały
-2. Popraw plik mainCnn pod kątem funkcjonalnosci, jakości kodu oraz by używał nowych danych a nie starych(pewnie bedziesz musiał poprawic sciezki do plikow takze), 
-niech uzyje /fold_0 lub fold_1 jako zbioru treningowego a fold 2 jako zbioru walidacyjnego
+Przeanalizuj mainCnn oraz otrzymane wyniki, dodaj sekcje z wagami dla modelu, 
+ precision    recall  f1-score   support
+
+   Zdrowe (hem)       0.55      0.59      0.57      1096
+Białaczka (all)       0.81      0.79      0.80      2457
+
+aktualnie precyzja nie jest za duza, szczegolnie przy zdrowych głownie przez to ze dane wejsciowe to w wiekszosci chore komorki.
+Popraw działanie modelu w celu poprawy jakosci i odkrywania.
